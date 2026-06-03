@@ -1,0 +1,39 @@
+name: PhishGuard CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Set mock LLM provider
+        run: echo "LLM_PROVIDER=mock" >> $GITHUB_ENV
+
+      - name: Run Feature Extractor Tests
+        run: pytest feature-extractor/tests/ -v --tb=short
+
+      - name: Run LLM Analyzer Tests
+        run: pytest llm-analyzer/tests/ -v --tb=short
+
+      - name: Run Backend API Tests
+        run: pytest backend/tests/ -v --tb=short
