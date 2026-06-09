@@ -152,11 +152,6 @@ EXAMPLES = [
 def build_ui() -> gr.Blocks:
     with gr.Blocks(
         title="PhishGuard — LLM Phishing Detector",
-        theme=gr.themes.Soft(primary_hue="red"),
-        css="""
-        .main-title { text-align: center; margin-bottom: 8px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 24px; }
-        """,
     ) as demo:
 
         gr.HTML("""
@@ -224,5 +219,10 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=int(os.getenv("GRADIO_PORT", 7860)),
-        share=False,          # Set True to get a public Gradio link
+        share=False,
+        theme=gr.themes.Soft(primary_hue="red"),
+        css="""
+        .main-title { text-align: center; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 24px; }
+        """,
     )

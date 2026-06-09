@@ -126,6 +126,10 @@ def analyze_url(request: AnalyzeRequest):
             features=[f.__dict__ for f in extraction.features],
             risk_score=extraction.total_risk_score,
         )
+        print("=" * 40)
+        print("RAW LLM RESPONSE:")
+        print(analysis.raw_response)
+        print("=" * 40)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM analysis failed: {e}")
 

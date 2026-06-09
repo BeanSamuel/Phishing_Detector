@@ -18,7 +18,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from project root dynamically
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(dotenv_path=os.path.join(project_root, ".env"))
 
 # ── Data Models ───────────────────────────────────────────────────────────────
 
@@ -161,6 +163,59 @@ class MockProvider(BaseLLMProvider):
         )
 
 
+class GeminiProvider(BaseLLMProvider):
+    """Google Gemini API via OpenAI compatibility layer (free tier)."""
+
+    def __init__(self, model: str = "gemini-2.5-flash"):
+        from openai import OpenAI
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set")
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        )
+        self.model = model
+
+    def complete(self, system_prompt: str, user_prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+        )
+        return response.choices[0].message.content
+
+
+class OpenRouterProvider(BaseLLMProvider):
+    """OpenRouter API for free models."""
+
+    def __init__(self, model: str = "google/gemini-2.5-flash"):
+        from openai import OpenAI
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1"
+        )
+        self.model = model
+
+    def complete(self, system_prompt: str, user_prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=600,
+        )
+        return response.choices[0].message.content
+
+
 def get_provider() -> BaseLLMProvider:
     """
     Factory: selects LLM provider based on LLM_PROVIDER env var.
@@ -173,6 +228,22 @@ def get_provider() -> BaseLLMProvider:
     elif provider == "ollama":
         model = os.getenv("OLLAMA_MODEL", "llama3")
         return OllamaProvider(model=model)
+    elif provider == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            import warnings
+            warnings.warn("GEMINI_API_KEY or GOOGLE_API_KEY not found in environment. Falling back to MockProvider.")
+            return MockProvider()
+        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        return GeminiProvider(model=model)
+    elif provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            import warnings
+            warnings.warn("OPENROUTER_API_KEY not found in environment. Falling back to MockProvider.")
+            return MockProvider()
+        model = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+        return OpenRouterProvider(model=model)
     else:
         return MockProvider()
 

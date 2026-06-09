@@ -64,3 +64,32 @@ def test_analyzer_to_dict():
     assert "risk_level" in d
     assert "explanation" in d
     assert "raw_response" not in d   # Should not expose raw output in API response
+
+
+def test_gemini_provider_mocked(monkeypatch):
+    from unittest.mock import MagicMock
+    import analyzer
+
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.choices = [
+        MagicMock(message=MagicMock(content="RISK_LEVEL: Low\nEXPLANATION: Mocked Gemini\nATTACK_GOAL: None\nRECOMMENDATION: Safe\nCONFIDENCE: High"))
+    ]
+    mock_client.chat.completions.create.return_value = mock_response
+
+    monkeypatch.setenv("GEMINI_API_KEY", "dummy_key")
+    import openai
+    monkeypatch.setattr(openai, "OpenAI", lambda *args, **kwargs: mock_client)
+
+    provider = analyzer.GeminiProvider()
+    res = provider.complete("system_prompt", "user_prompt")
+
+    assert "Mocked Gemini" in res
+    mock_client.chat.completions.create.assert_called_once_with(
+        model="gemini-2.5-flash",
+        messages=[
+            {"role": "system", "content": "system_prompt"},
+            {"role": "user", "content": "user_prompt"},
+        ],
+        temperature=0.2,
+    )

@@ -13,6 +13,7 @@ from extractor import (
     check_at_symbol,
     check_subdomain_count,
     check_https_keyword_abuse,
+    check_typosquatting,
 )
 from urllib.parse import urlparse
 
@@ -86,3 +87,21 @@ def test_url_without_scheme():
     # Should not crash
     report = extract_features("google.com")
     assert report.risk_level in ("Low", "Medium", "High")
+
+def test_typosquatting_flagged():
+    r1 = check_typosquatting(parsed("http://go0gle.com"), "http://go0gle.com")
+    assert r1.risk_weight > 0
+    assert "google" in r1.value
+
+    r2 = check_typosquatting(parsed("http://paypa1.com"), "http://paypa1.com")
+    assert r2.risk_weight > 0
+    assert "paypal" in r2.value
+
+def test_typosquatting_safe():
+    r = check_typosquatting(parsed("https://google.com"), "https://google.com")
+    assert r.risk_weight == 0.0
+    assert r.value == "exact_match"
+
+def test_go0gle_phish_medium_risk():
+    report = extract_features("http://go0gle.com")
+    assert report.risk_level in ("Medium", "High")
